@@ -18,6 +18,9 @@
     <IsPackable>false</IsPackable>
     <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
     <Deterministic>true</Deterministic>
+
+    <!-- 构建必须零警告：新警告即错误，防止"先带着警告上线"慢慢烂掉。 -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
 </Project>

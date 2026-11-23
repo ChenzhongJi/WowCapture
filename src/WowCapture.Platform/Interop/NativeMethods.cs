@@ -39,6 +39,14 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll")]
     public static partial int GetSystemMetrics(int nIndex);
 
+    // ---- GetAsyncKeyState：热键录制时判断 Win 键是否按着（WPF 的 Keyboard.Modifiers 不含 Win） ----
+    public const int VkLwin = 0x5B;
+    public const int VkRwin = 0x5C;
+
+    /// <summary>返回值最高位为 1 表示按键当前按着。</summary>
+    [LibraryImport("user32.dll")]
+    public static partial short GetAsyncKeyState(int vKey);
+
     [LibraryImport("gdi32.dll", SetLastError = true)]
     public static partial IntPtr CreateCompatibleDC(IntPtr hdc);
 

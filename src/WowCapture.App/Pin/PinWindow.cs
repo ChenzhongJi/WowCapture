@@ -34,7 +34,7 @@ internal sealed class PinWindow : Window
     private const double OpacityStep = 0.08;
 
     private readonly BitmapSource _image;
-    private readonly double _dpiScale;
+    private double _dpiScale;
     private readonly Image _imageView;
     private readonly FileLog _log;
 
@@ -86,6 +86,7 @@ internal sealed class PinWindow : Window
         ApplyScale(1.0, new Point(0, 0), force: true);
 
         SourceInitialized += OnSourceInitialized;
+        DpiChanged += OnDpiChanged;
         MouseLeftButtonDown += OnMouseLeftButtonDown;
         MouseWheel += OnMouseWheel;
         MouseRightButtonUp += OnMouseRightButtonUp;
@@ -162,6 +163,19 @@ internal sealed class PinWindow : Window
         NativeMethods.SetWindowLong(hwnd, NativeMethods.GwlExStyle, exStyle | NativeMethods.WsExToolWindow);
     }
 
+    /// <summary>
+    /// 拖到缩放不同的显示器后，WPF 会自动按新 DPI 重算窗口的 DIP 尺寸（物理尺寸不变），
+    /// 但"1:1 像素"要求宽高 == 像素尺寸 / 新缩放 × 当前倍率——必须跟着重算，
+    /// 否则贴图在新屏上不再 1:1，对照抄写会错位（贴图恰恰在混合 DPI 多屏下最常用）。
+    /// </summary>
+    private void OnDpiChanged(object? sender, DpiChangedEventArgs e)
+    {
+        _dpiScale = e.NewDpi.DpiScaleX <= 0 ? 1.0 : e.NewDpi.DpiScaleX;
+        Width = (_image.PixelWidth / _dpiScale) * _scale;
+        Height = (_image.PixelHeight / _dpiScale) * _scale;
+        _log.Info($"贴图跨屏：新缩放 {e.NewDpi.DpiScaleX:P0}，已重算尺寸保持 1:1");
+    }
+
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         MouseDownCount++;
@@ -209,13 +223,12 @@ internal sealed class PinWindow : Window
         if (modifiers.HasFlag(ModifierKeys.Alt))
         {
             SetOpacity(Opacity + (e.Delta > 0 ? OpacityStep : -OpacityStep));
-            _log.Info($"贴图透明度：{Opacity:P0}（Alt+滚轮）");
         }
         else
         {
             // 以光标为锚点缩放：光标下的内容保持不动，比"从左上角放大"顺手得多。
+            // 滚轮事件每次滚动一格触发一次，连续滚动可达几十次，因此不逐格写日志。
             ApplyScale(_scale * (e.Delta > 0 ? 1.1 : 1 / 1.1), anchor);
-            _log.Info($"贴图缩放：{_scale:P0}（滚轮，modifiers={modifiers}）");
         }
 
         e.Handled = true;

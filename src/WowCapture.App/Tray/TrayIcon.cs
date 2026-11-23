@@ -22,6 +22,9 @@ internal sealed class TrayIcon : IDisposable
     /// <summary>用户要打开截图保存目录。</summary>
     public event EventHandler? OpenOutputFolderRequested;
 
+    /// <summary>用户要打开设置窗口。</summary>
+    public event EventHandler? SettingsRequested;
+
     /// <summary>用户要关闭所有贴图。</summary>
     public event EventHandler? CloseAllPinsRequested;
 
@@ -35,11 +38,8 @@ internal sealed class TrayIcon : IDisposable
         _captureItem = new ToolStripMenuItem("截图");
         _captureItem.Click += (_, _) => CaptureRequested?.Invoke(this, EventArgs.Empty);
 
-        var settings = new ToolStripMenuItem("设置…")
-        {
-            Enabled = false,
-            ToolTipText = "M4 实现",
-        };
+        var settings = new ToolStripMenuItem("设置…");
+        settings.Click += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
 
         var openData = new ToolStripMenuItem("打开数据目录");
         var openOutput = new ToolStripMenuItem("打开截图目录");

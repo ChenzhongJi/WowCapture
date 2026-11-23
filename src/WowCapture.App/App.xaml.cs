@@ -33,6 +33,7 @@ public partial class App : System.Windows.Application
     private HotkeyService? _hotkey;
     private PinManager? _pins;
     private FirstRunWindow? _firstRunWindow;
+    private SettingsWindow? _settingsWindow;
     private OverlaySession? _overlaySession;
 
     /// <summary>一次截图会话正在进行（含抓屏阶段）。只在 UI 线程读写。</summary>
@@ -182,6 +183,7 @@ public partial class App : System.Windows.Application
         _tray = new TrayIcon(_log);
         _tray.ExitRequested += (_, _) => Shutdown(0);
         _tray.CaptureRequested += OnHotkeyPressed;
+        _tray.SettingsRequested += (_, _) => ShowSettingsWindow();
         _tray.OpenOutputFolderRequested += (_, _) => OpenOutputFolder();
         _tray.CloseAllPinsRequested += (_, _) => _pins?.CloseAll();
         _tray.DisableClickThroughRequested += (_, _) =>
@@ -211,9 +213,14 @@ public partial class App : System.Windows.Application
         ShowFirstRunGuideIfNeeded();
 
         _log.Info("托盘已就绪");
-        _tray.ShowBalloon(
-            "WowCapture 已启动",
-            $"按 {_settings.Current.GetHotkeyGesture()} 框选截图；Esc 取消，Enter 确认并复制。");
+
+        // 开机自启/自检不弹启动气泡：每次开机都打扰一遍，比托盘图标不显示还烦人。
+        if (!IsSelfTest && !HasFlag("--autostart"))
+        {
+            _tray.ShowBalloon(
+                "WowCapture 已启动",
+                $"按 {_settings.Current.GetHotkeyGesture()} 框选截图；Esc 取消，Enter 确认并复制。");
+        }
 
         if (IsSelfTest)
         {
@@ -384,11 +391,25 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        var bounds = frame.Bounds;
+        var scan = BlankFrameDetector.Scan(frame);
+
+        if (scan.IsLikelyBlank)
+        {
+            // DRM/独占全屏会给 GDI 一张纯黑图：与其把黑图扣进剪贴板让用户以为是自己操作错了，
+            // 不如明说并取消（PrintWindow/WGC 回退链要到 V1.2 才有）。
+            // 顺便也省掉 66MB 的位图转换——黑帧不值得转换。
+            _log?.Warn($"冻结帧疑似全黑（非黑采样 {scan.NonBlackCount}/{scan.SampledCount}），本次截图已取消。");
+            _tray?.ShowBalloon(
+                "截图已取消",
+                "抓到的画面是全黑的——通常是 DRM 保护内容或独占全屏游戏，GDI 抓不到。",
+                warning: true);
+            return;
+        }
+
         // 先转成 BitmapSource（WPF 会复制一份），随后原始像素缓冲就可以被回收，
         // 避免 66MB 的冻结帧和它的位图副本同时长期占着。
         var frameBitmap = FrameBitmap.ToBitmapSource(frame);
-        var bounds = frame.Bounds;
-        var scan = BlankFrameDetector.Scan(frame);
         _log?.Info($"冻结帧 {bounds}，非黑采样 {scan.NonBlackCount}/{scan.SampledCount}，颜色一致={scan.IsUniform}");
 
         var session = OverlaySession.Create(
@@ -652,6 +673,27 @@ public partial class App : System.Windows.Application
         }
     }
 
+    /// <summary>设置窗口：热键/动作/输出目录/自启。保存即生效，热键当场重注册，免重启。</summary>
+    private void ShowSettingsWindow()
+    {
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        _settingsWindow = new SettingsWindow(_settings!, _hotkey!, _log!, OnSettingsApplied);
+        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        _settingsWindow.Show();
+    }
+
+    /// <summary>设置窗口保存成功后：同步托盘"截图"项的热键文案与注册表自启。</summary>
+    private void OnSettingsApplied()
+    {
+        _tray?.SetCaptureHotkeyText(_settings!.Current.GetHotkeyGesture().ToString());
+        SyncAutoStart();
+    }
+
     private void OpenOutputFolder()
     {
         try
@@ -673,6 +715,9 @@ public partial class App : System.Windows.Application
     {
         _firstRunWindow?.Close();
         _firstRunWindow = null;
+
+        _settingsWindow?.Close();
+        _settingsWindow = null;
 
         _overlaySession?.Dispose();
         _overlaySession = null;

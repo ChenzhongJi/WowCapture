@@ -13,8 +13,9 @@ namespace WowCapture.Core.Imaging;
 /// 会话结束必须立即释放，且同一时刻只允许存在一个会话。
 /// </para>
 /// <para>
-/// 像素格式选 BGRA 而不是 BGR：WPF 的 <c>PixelFormats.Bgra32</c> 可直接零转换接管，
-/// 带 alpha 也让未来支持圆角/阴影导出不需要换管线。
+    /// 存储布局选 4 字节 BGRA 是为了与 GDI 的 32bpp DIB stride 对齐，并为未来带 alpha 的导出留好管线；
+    /// 但 GDI 抓屏时 alpha 字节恒为 0：消费方必须按 <c>PixelFormats.Bgr32</c> 解释，
+    /// 按 <c>Bgra32</c> 会得到整张全透明的图（详见 WowCapture.App 的 FrameBitmap）。
 /// </para>
 /// </remarks>
 public sealed class CapturedFrame
