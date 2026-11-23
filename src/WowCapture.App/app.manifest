@@ -25,10 +25,14 @@
     显式声明 asInvoker：不声明时 UAC 的兼容性启发式（尤其经安装器/垫片启动）
     可能给出不可预期的行为。本程序无需提权——数据目录在 LOCALAPPDATA，
     自启写 HKCU，都在标准用户权限内。
+    注意命名空间：trustInfo 必须是 asm.v2，requestedPrivileges 是 asm.v3；
+    把 trustInfo 直接放到 asm.v3 会让 SxS 不识别该节，激活上下文生成失败。
   -->
-  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
-      <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
     </security>
   </trustInfo>
 </assembly>
