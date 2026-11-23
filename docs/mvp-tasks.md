@@ -46,8 +46,8 @@
 | T0.2 | 单实例与生命周期 | 命名 `Mutex`（`Local\WowCapture`）；重复启动时唤起已有实例（命名管道或 `WM_COPYDATA`）；`ShutdownMode=OnExplicitShutdown` | 双击两次只有一个进程；第二次启动提示"已在运行"后自行退出 | 0.5 | 🚧 |
 | T0.3 | 日志与崩溃兜底 | 按天滚动的文件日志；`DispatcherUnhandledException` / `AppDomain.UnhandledException` / `TaskScheduler.UnobservedTaskException` 三处兜底，写日志而非崩溃框 | 手动抛异常后日志里有堆栈，进程干净退出 | 0.5 | ✅ |
 | T0.4 | 配置存储 ✅ | `AppSettings` 模型 + `SettingsStore`：写 `.tmp` 后 `File.Replace` 原子替换；JSON 损坏时备份为 `.bak-时间戳` 并回退默认；`portable.flag` 时改用 `.\data\` | 手改坏 `settings.json` 后启动不崩，旧文件被保留为 `.bak-20261120152711`，并自动重建默认配置 | 0.5 | ✅ |
-| T0.5 | 托盘与命令路由 | `NotifyIcon` + 菜单（截图 / 设置 / 打开数据目录 / 打开日志 / 退出）；命令走一个轻量 `ICommandHandler` 注册表，避免 `App.xaml.cs` 变成上帝类 | 托盘常驻不占任务栏；菜单项全部可点；退出后进程消失、图标不残留 | 0.5 | 🚧 |
-| T0.6 | 测试工程 | xUnit 工程；首批用例：`ScreenRect` 运算、命名模板、设置 JSON 往返 | `dotnet test` 全绿，覆盖 Core 的几何与模板 | 0.5 | ⬜ |
+| T0.5 | 托盘与命令路由 | `NotifyIcon` + 菜单（截图 / 设置 / 打开数据目录 / 打开日志 / 退出）；命令走一个轻量 `ICommandHandler` 注册表，避免 `App.xaml.cs` 变成上帝类 | 托盘常驻不占任务栏；菜单项全部可点；退出后进程消失、图标不残留 | 0.5 | ✅ 菜单全部可点（设置窗口已接通）；命令仍直连 `App.xaml.cs`，`ICommandHandler` 注册表留 V1.0 重构 |
+| T0.6 | 测试工程 | xUnit 工程；首批用例：`ScreenRect` 运算、命名模板、设置 JSON 往返 | `dotnet test` 全绿，覆盖 Core 的几何与模板 | 0.5 | ✅ `tests/WowCapture.Core.Tests`（54 用例：几何/热键/模板/坐标往返/失效区域契约），build.yml 已启用 Test 步骤 |
 
 **M0 DoD**：能挂着不动一整天，日志里没有异常，退出干净。
 

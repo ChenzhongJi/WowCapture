@@ -1,0 +1,25 @@
+name: 功能建议
+description: 建议一个新功能或体验改进
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        建议先看一眼仓库 `docs/roadmap.md` 的功能矩阵与「明确不做」清单——
+        账号/云同步/遥测/插件系统/录屏已在范围外。
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 你的使用场景
+      description: 在什么情况下需要这个功能？没有它时你目前怎么做？
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的交互方式
+      description: 如果已有想法，描述按键/流程/界面；没有也行，场景说清楚即可。
+    validations:
+      required: false

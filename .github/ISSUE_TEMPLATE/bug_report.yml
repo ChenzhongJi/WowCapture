@@ -1,0 +1,39 @@
+name: 问题反馈
+description: 报告一个 Bug（截图错误、偏移、黑图、崩溃、托盘问题……）
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！请先跑一遍诊断并附上结果，绝大多数坐标/托盘问题靠它就能定位：
+
+        ```
+        WowCapture.exe --diagnose
+        ```
+
+        报告文件在数据目录的 `diagnose.txt`；数据目录可用 `WowCapture.exe --open-data` 或托盘菜单「打开数据目录」找到。
+        日志在 `logs\app-*.log`，拖入相关时间段的尾部即可。
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 期望的结果 vs 实际的结果，能配截图最好。
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      description: Windows 版本；显示器数量、分辨率与缩放（例如「单屏 2880×1800 @200%」）；WowCapture 版本（托盘右键「关于」可见）。
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志与诊断输出
+      description: diagnose.txt 内容或 logs\app-*.log 尾部。
+    validations:
+      required: false
