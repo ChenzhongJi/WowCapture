@@ -1,0 +1,17 @@
+# 行尾策略与 .editorconfig 保持一致：文本统一 CRLF。
+# .editorconfig 只约束装了插件的编辑器，git 层面的约束必须靠这里，
+# 否则 Linux/macOS 贡献者 clone 后会产生整文件行尾 diff 噪音。
+* text=auto eol=crlf
+
+# 明确的二进制类型，禁止被当作文本做行尾与合并处理。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.cur binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.zip binary
+*.7z binary

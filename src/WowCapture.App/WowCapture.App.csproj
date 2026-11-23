@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- 托盘用 NotifyIcon，直接借 WinForms 的实现，避免为一行托盘代码引 NuGet -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>WowCapture</AssemblyName>
+    <RootNamespace>WowCapture.App</RootNamespace>
+
+    <!--
+      WFO0003：分析器建议把高 DPI 配置从 manifest 挪到 Application.SetHighDpiMode。
+      这条只对 WinForms 宿主成立；本项目 UI 是 WPF（走 manifest 的 PerMonitorV2），
+      WinForms 只用来借一个 NotifyIcon。因此保留 manifest 并抑制该规则。
+    -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      UseWindowsForms 会把 System.Drawing / System.Windows.Forms 塞进全局 using，
+      于是 Pen/Point/Brush/KeyEventArgs 全部与 WPF 的同名类型冲突。
+      只有 TrayIcon 需要 WinForms，所以这里摘掉全局引入，由该文件自己 using。
+    -->
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WowCapture.Core\WowCapture.Core.csproj" />
+    <ProjectReference Include="..\WowCapture.Platform\WowCapture.Platform.csproj" />
+    <ProjectReference Include="..\WowCapture.Capture\WowCapture.Capture.csproj" />
+    <ProjectReference Include="..\WowCapture.Editor\WowCapture.Editor.csproj" />
+  </ItemGroup>
+
+</Project>

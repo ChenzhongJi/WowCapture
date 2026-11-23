@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="WowCapture" />
+
+  <!--
+    必须声明 PerMonitorV2，否则在高缩放显示器上拿到的坐标会被系统虚拟化，
+    遮罩窗口与选区会出现整段偏移（见 docs/architecture.md 的 D3）。
+  -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+    </windowsSettings>
+  </application>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 / 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+
+  <!--
+    显式声明 asInvoker：不声明时 UAC 的兼容性启发式（尤其经安装器/垫片启动）
+    可能给出不可预期的行为。本程序无需提权——数据目录在 LOCALAPPDATA，
+    自启写 HKCU，都在标准用户权限内。
+  -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+    </security>
+  </trustInfo>
+</assembly>

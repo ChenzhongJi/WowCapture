@@ -1,0 +1,9 @@
+<Application x:Class="WowCapture.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+    <!--
+        没有 StartupUri：截图工具常驻托盘，不显示主窗口。
+        ShutdownMode=OnExplicitShutdown 保证关掉任何窗口都不会让进程退出。
+    -->
+</Application>

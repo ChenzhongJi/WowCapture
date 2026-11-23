@@ -1,0 +1,27 @@
+## .NET / Visual Studio
+bin/
+obj/
+artifacts/
+publish/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Rider / VS Code
+.idea/
+.vscode/
+
+## 运行期数据（便携模式）
+data/
+*.log
+
+## 构建产物
+*.pdb
+*.nupkg
+
+## 系统垃圾
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WowCapture.App/WowCapture.App.csproj" />
+    <Project Path="src/WowCapture.Capture/WowCapture.Capture.csproj" />
+    <Project Path="src/WowCapture.Core/WowCapture.Core.csproj" />
+    <Project Path="src/WowCapture.Editor/WowCapture.Editor.csproj" />
+    <Project Path="src/WowCapture.Platform/WowCapture.Platform.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WowCapture.Core.Tests/WowCapture.Core.Tests.csproj" />
+  </Folder>
+</Solution>
