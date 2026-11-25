@@ -65,6 +65,9 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        // 从这一刻起本进程是"唯一实例"：挂上唤起通道，之后的重复启动会通过管道找到这里。
+        SingleInstanceSignaler.StartServer(OnActivateRequested, Dispatcher);
+
         AppPaths.EnsureCreated();
         _log = new FileLog(AppPaths.LogFile);
         _pins = new PinManager(_log);
@@ -519,14 +522,35 @@ public partial class App : System.Windows.Application
         _instanceMutex.Dispose();
         _instanceMutex = null;
 
-        System.Windows.MessageBox.Show(
-            "WowCapture 已在运行，请查看任务栏通知区域。",
-            "WowCapture",
-            System.Windows.MessageBoxButton.OK,
-            System.Windows.MessageBoxImage.Information);
+        // 优先"唤起"已有实例（它自己会亮出来）；管道不在才退回提示对话框——
+        // 覆盖首实例是还没带这个功能的旧版本的情况。
+        if (!SingleInstanceSignaler.TrySignalFirstInstance())
+        {
+            System.Windows.MessageBox.Show(
+                "WowCapture 已在运行，请查看任务栏通知区域。",
+                "WowCapture",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+        }
 
         Shutdown(0);
         return false;
+    }
+
+    /// <summary>被第二实例唤起时：把该亮的窗口亮出来，没有窗口就弹托盘气泡指路。</summary>
+    private void OnActivateRequested()
+    {
+        _log?.Info("收到第二实例的唤起请求");
+
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        _tray?.ShowBalloon(
+            "WowCapture 已在运行",
+            $"截图热键 {_settings?.Current.GetHotkeyGesture() ?? HotkeyGesture.Default}；图标在任务栏通知区域。");
     }
 
     private void HookGlobalExceptionHandlers()
