@@ -72,6 +72,7 @@ internal static class OverlayToolbar
 
     private static readonly (AnnotationTool Tool, string Name)[] Tools =
     [
+        (AnnotationTool.Select, "选择"),
         (AnnotationTool.Arrow, "箭头"),
         (AnnotationTool.Rectangle, "矩形"),
         (AnnotationTool.Ellipse, "椭圆"),
@@ -262,6 +263,24 @@ internal static class OverlayToolbar
 
         switch (tool)
         {
+            case AnnotationTool.Select:
+                // 经典鼠标指针剪影：唯一一个填充图标，一眼就是"选择"。
+                var pointer = new StreamGeometry();
+                using (var context = pointer.Open())
+                {
+                    context.BeginFigure(new Point(box.Left + 4, box.Top + 1), isFilled: true, isClosed: true);
+                    context.LineTo(new Point(box.Left + 4, box.Top + 10.5), isStroked: false, isSmoothJoin: false);
+                    context.LineTo(new Point(box.Left + 6.2, box.Top + 8.3), isStroked: false, isSmoothJoin: false);
+                    context.LineTo(new Point(box.Left + 7.6, box.Top + 11.8), isStroked: false, isSmoothJoin: false);
+                    context.LineTo(new Point(box.Left + 9.2, box.Top + 10.9), isStroked: false, isSmoothJoin: false);
+                    context.LineTo(new Point(box.Left + 7.7, box.Top + 7.9), isStroked: false, isSmoothJoin: false);
+                    context.LineTo(new Point(box.Left + 10.4, box.Top + 7.9), isStroked: false, isSmoothJoin: false);
+                }
+
+                pointer.Freeze();
+                dc.DrawGeometry(brush, null, pointer);
+                break;
+
             case AnnotationTool.Arrow:
                 var shaftStart = new Point(box.Left + 1.5, box.Bottom - 1.5);
                 var shaftTip = new Point(box.Right - 1.5, box.Top + 1.5);

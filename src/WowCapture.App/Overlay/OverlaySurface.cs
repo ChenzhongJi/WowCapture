@@ -33,6 +33,9 @@ internal sealed class OverlaySurface : FrameworkElement
     private static readonly Brush HintBackground = CreateFrozenBrush(Color.FromArgb(0xD0, 0x20, 0x20, 0x20));
     private static readonly Brush HoverTitleBackground = CreateFrozenBrush(Color.FromArgb(0xD8, 0x1F, 0x2A, 0x36));
 
+    /// <summary>选中标注的虚线描边：只在预览里画，不进导出。</summary>
+    private static readonly Pen SelectionOutlinePen = CreateFrozenDashPen(Color.FromRgb(0x1E, 0x90, 0xFF), 1.5);
+
     private readonly OverlaySession _session;
     private readonly int _monitorIndex;
     private readonly OverlayPlacement _placement;
@@ -47,6 +50,7 @@ internal sealed class OverlaySurface : FrameworkElement
 
     private bool _dragging;
     private bool _annotating;
+    private bool _editing;
     private bool _pressedForSnap;
     private ScreenPoint _pressPoint;
 
@@ -223,6 +227,17 @@ internal sealed class OverlaySurface : FrameworkElement
             AnnotationRenderer.Draw(dc, pending, mosaicSource);
         }
 
+        // 选中标注的虚线框：画在标注层之上、只在预览可见，永远不进导出。
+        if (_session.SelectedAnnotation is { } selected)
+        {
+            var bounds = selected.GetBounds();
+            if (!bounds.IsEmpty)
+            {
+                var outline = new Rect(bounds.X - 3, bounds.Y - 3, bounds.Width + 6, bounds.Height + 6);
+                dc.DrawRectangle(null, SelectionOutlinePen, outline);
+            }
+        }
+
         dc.Pop();
         dc.Pop();
     }
@@ -382,6 +397,19 @@ internal sealed class OverlaySurface : FrameworkElement
         // 已框选且按在选区内：开始画标注（文字工具开输入框，序号工具直接落点）。
         if (_session.Selection is { IsEmpty: false } selection && selection.Contains(physical))
         {
+            // 选择工具：优先进入"抓取已有标注"分支；抓不到就只是取消选中。
+            if (_session.ActiveTool == AnnotationTool.Select)
+            {
+                if (_session.BeginAnnotationEdit(physical))
+                {
+                    _editing = true;
+                    CaptureMouse();
+                }
+
+                e.Handled = true;
+                return;
+            }
+
             if (_session.ActiveTool == AnnotationTool.Text)
             {
                 Host?.BeginTextEdit(physical);
@@ -421,9 +449,10 @@ internal sealed class OverlaySurface : FrameworkElement
     protected override void OnMouseMove(System.Windows.Input.MouseEventArgs e)
     {
         var local = e.GetPosition(this);
+        var physical = ToPhysical(local);
 
         // 悬停在工具栏上时只更新按钮高亮，不做标注/吸附。
-        if (!_annotating && !_dragging && !_pressedForSnap)
+        if (!_annotating && !_dragging && !_pressedForSnap && !_editing)
         {
             var hoverIndex = _toolbar?.IndexOf(local) ?? -1;
             if (hoverIndex != _hoveredToolbarIndex)
@@ -432,9 +461,26 @@ internal sealed class OverlaySurface : FrameworkElement
                 Cursor = hoverIndex >= 0 ? System.Windows.Input.Cursors.Arrow : System.Windows.Input.Cursors.Cross;
                 InvalidateVisual();
             }
+
+            // 选择工具下，悬停在可命中的标注上给"可拖动"光标，其他地方回到十字。
+            if (hoverIndex < 0 && _session.ActiveTool == AnnotationTool.Select)
+            {
+                var wanted = _session.HitTestAnnotation(physical) >= 0
+                    ? System.Windows.Input.Cursors.SizeAll
+                    : System.Windows.Input.Cursors.Cross;
+
+                if (Cursor != wanted)
+                {
+                    Cursor = wanted;
+                }
+            }
         }
 
-        var physical = ToPhysical(local);
+        if (_editing)
+        {
+            _session.UpdateAnnotationEdit(physical);
+            return;
+        }
 
         if (_annotating)
         {
@@ -471,6 +517,15 @@ internal sealed class OverlaySurface : FrameworkElement
     protected override void OnMouseLeftButtonUp(System.Windows.Input.MouseButtonEventArgs e)
     {
         var physical = ToPhysical(e.GetPosition(this));
+
+        if (_editing)
+        {
+            _editing = false;
+            ReleaseMouseCapture();
+            _session.EndAnnotationEdit(physical);
+            e.Handled = true;
+            return;
+        }
 
         if (_annotating)
         {
@@ -510,6 +565,13 @@ internal sealed class OverlaySurface : FrameworkElement
     private static Pen CreateFrozenPen(Brush brush, double thickness)
     {
         var pen = new Pen(brush, thickness);
+        pen.Freeze();
+        return pen;
+    }
+
+    private static Pen CreateFrozenDashPen(Color color, double thickness)
+    {
+        var pen = new Pen(new SolidColorBrush(color), thickness) { DashStyle = DashStyles.Dash };
         pen.Freeze();
         return pen;
     }

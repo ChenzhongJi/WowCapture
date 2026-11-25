@@ -57,6 +57,14 @@ internal sealed class OverlaySession : IDisposable
     private List<ScreenPoint>? _strokePoints;
     private ScreenPoint _annotationStart;
 
+    // ---- 标注编辑（选择工具） ----
+    private Annotation? _selected;
+    private int _selectedIndex = -1;
+    private Annotation? _editOriginal;
+    private IReadOnlyList<Annotation>? _preEditAnnotations;
+    private ScreenPoint _editGrab;
+    private bool _editing;
+
     private ScreenPoint _anchor;
     private ScreenPoint _lastPointer;
     private bool _hasPointer;
@@ -99,6 +107,9 @@ internal sealed class OverlaySession : IDisposable
 
     /// <summary>正在拖拽中、尚未提交的标注（用于预览）。</summary>
     public Annotation? PendingAnnotation => _pending;
+
+    /// <summary>选择工具当前选中的标注（虚线描边的高亮对象）。</summary>
+    public Annotation? SelectedAnnotation => _selected;
 
     public AnnotationTool ActiveTool { get; private set; } = AnnotationTool.Arrow;
 
@@ -187,9 +198,13 @@ internal sealed class OverlaySession : IDisposable
     {
         ActiveTool = tool;
 
-        // 换工具时把画笔状态收干净，避免上一笔的点集被下一笔复用。
+        // 换工具时把画笔与编辑状态都收干净，避免上一笔的点集或选中的索引被下一个工具复用。
         _pending = null;
         _strokePoints = null;
+        _selected = null;
+        _editing = false;
+        _editOriginal = null;
+        _preEditAnnotations = null;
         InvalidateAll();
     }
 
@@ -322,6 +337,12 @@ internal sealed class OverlaySession : IDisposable
     /// <summary>选中区域内的按下：开始一条标注。</summary>
     public bool BeginAnnotation(ScreenPoint physical)
     {
+        if (ActiveTool == AnnotationTool.Select)
+        {
+            // 选择工具由 BeginAnnotationEdit 负责；走到这里说明调用方路由错了。
+            return false;
+        }
+
         if (Selection is not { IsEmpty: false } selection || !selection.Contains(physical))
         {
             return false;
@@ -387,6 +408,9 @@ internal sealed class OverlaySession : IDisposable
 
         _redoStack.Push(_annotations);
         _annotations = _undoStack.Pop();
+
+        // 列表变了，选中的索引不再可信。
+        _selected = null;
         InvalidateAll();
     }
 
@@ -399,7 +423,160 @@ internal sealed class OverlaySession : IDisposable
 
         _undoStack.Push(_annotations);
         _annotations = _redoStack.Pop();
+        _selected = null;
         InvalidateAll();
+    }
+
+    // ---- 标注编辑（T2.1：画错不再只能撤销重画） ----
+
+    /// <summary>选择工具下命中测试：返回最上层命中的标注索引；-1 表示没命中或不在选区内。</summary>
+    public int HitTestAnnotation(ScreenPoint physical)
+    {
+        if (Selection is not { IsEmpty: false } selection || !selection.Contains(physical))
+        {
+            return -1;
+        }
+
+        for (var i = _annotations.Count - 1; i >= 0; i--)
+        {
+            if (_annotations[i].GetBounds().Contains(physical))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// 选择工具下按下：命中则"抓起"最上层的标注准备拖动（返回 true）；没命中则只清除选中（返回 false）。
+    /// </summary>
+    public bool BeginAnnotationEdit(ScreenPoint physical)
+    {
+        if (ActiveTool != AnnotationTool.Select)
+        {
+            return false;
+        }
+
+        var index = HitTestAnnotation(physical);
+        if (index < 0)
+        {
+            _selected = null;
+            _editing = false;
+            InvalidateAll();
+            return false;
+        }
+
+        _editing = true;
+        _selectedIndex = index;
+        _editOriginal = _annotations[index];
+        _preEditAnnotations = _annotations;
+        _editGrab = physical;
+        _selected = _annotations[index];
+        InvalidateAll();
+        return true;
+    }
+
+    /// <summary>拖动中：把被抓起的标注平移到当前指针位置（逐次生成新记录做预览）。</summary>
+    public void UpdateAnnotationEdit(ScreenPoint physical)
+    {
+        if (!_editing || _editOriginal is not { } original)
+        {
+            return;
+        }
+
+        var moved = original.Translate(physical.X - _editGrab.X, physical.Y - _editGrab.Y);
+        _selected = moved;
+
+        // 逐次重建列表：标注是引用快照，这条路径的分配量可以忽略。
+        var updated = new Annotation[_annotations.Count];
+        for (var i = 0; i < _annotations.Count; i++)
+        {
+            updated[i] = i == _selectedIndex ? moved : _annotations[i];
+        }
+
+        _annotations = updated;
+        InvalidateAll();
+    }
+
+    /// <summary>松开：有位移才把拖动前的快照压入撤销栈（原地不动不算一次操作）。</summary>
+    public void EndAnnotationEdit(ScreenPoint physical)
+    {
+        if (!_editing)
+        {
+            return;
+        }
+
+        _editing = false;
+        UpdateAnnotationEdit(physical);
+
+        if (physical.X != _editGrab.X || physical.Y != _editGrab.Y)
+        {
+            if (_preEditAnnotations is not null)
+            {
+                _undoStack.Push(_preEditAnnotations);
+                _redoStack.Clear();
+            }
+        }
+        else
+        {
+            // 没有位移：恢复原列表，不污染撤销栈。
+            if (_preEditAnnotations is not null)
+            {
+                _annotations = _preEditAnnotations;
+            }
+        }
+
+        _editOriginal = null;
+        _preEditAnnotations = null;
+        InvalidateAll();
+    }
+
+    /// <summary>Delete 键：删掉当前选中的标注，走撤销栈。</summary>
+    public void DeleteSelectedAnnotation()
+    {
+        if (_selected is not { } target)
+        {
+            return;
+        }
+
+        PushUndo();
+        _annotations = _annotations.Where(a => !ReferenceEquals(a, target)).ToArray();
+        _selected = null;
+        InvalidateAll();
+    }
+
+    /// <summary>方向键微调选中的标注。返回是否有标注在动（没有选中时调用方应转去微调选区）。</summary>
+    public bool NudgeSelectedAnnotation(int dx, int dy)
+    {
+        if (_selected is not { } current)
+        {
+            return false;
+        }
+
+        var updated = _annotations.ToArray();
+        var replaced = false;
+
+        for (var i = 0; i < updated.Length; i++)
+        {
+            if (ReferenceEquals(updated[i], current))
+            {
+                PushUndo();
+                updated[i] = current.Translate(dx, dy);
+                _selected = updated[i];
+                replaced = true;
+                break;
+            }
+        }
+
+        if (!replaced)
+        {
+            return false;
+        }
+
+        _annotations = updated;
+        InvalidateAll();
+        return true;
     }
 
     /// <summary>
@@ -495,6 +672,10 @@ internal sealed class OverlaySession : IDisposable
         _redoStack.Clear();
         _pending = null;
         _strokePoints = null;
+        _selected = null;
+        _editing = false;
+        _editOriginal = null;
+        _preEditAnnotations = null;
     }
 
     public void RequestConfirm()

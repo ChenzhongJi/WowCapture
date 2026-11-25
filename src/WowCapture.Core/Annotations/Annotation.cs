@@ -10,6 +10,12 @@ public abstract record Annotation
 {
     /// <summary>包围盒（物理像素），用于命中测试与失效区域。</summary>
     public abstract ScreenRect GetBounds();
+
+    /// <summary>
+    /// 整体平移（物理像素），返回新标注。不可变模型下"移动"就是换一个新记录，
+    /// 撤销栈里存着的旧快照天然不受影响（架构 D5）。
+    /// </summary>
+    public abstract Annotation Translate(int dx, int dy);
 }
 
 /// <summary>矩形框。</summary>
@@ -19,6 +25,8 @@ public sealed record RectangleAnnotation(ScreenRect Bounds, AnnotationStyle Styl
     /// 描边以矩形边缘为中心线，一半画在 <see cref="Bounds"/> 之外，失效区域必须把它算进来。
     /// </summary>
     public override ScreenRect GetBounds() => StrokeGeometry.Inflate(Bounds, Style.StrokeWidth);
+
+    public override Annotation Translate(int dx, int dy) => this with { Bounds = Bounds.Offset(dx, dy) };
 }
 
 /// <summary>椭圆框。</summary>
@@ -26,12 +34,20 @@ public sealed record EllipseAnnotation(ScreenRect Bounds, AnnotationStyle Style)
 {
     /// <summary>同 <see cref="RectangleAnnotation"/>：外接矩形之外还有半条描边。</summary>
     public override ScreenRect GetBounds() => StrokeGeometry.Inflate(Bounds, Style.StrokeWidth);
+
+    public override Annotation Translate(int dx, int dy) => this with { Bounds = Bounds.Offset(dx, dy) };
 }
 
 /// <summary>直线。保留起止点方向，因为箭头需要它。</summary>
 public sealed record LineAnnotation(ScreenPoint Start, ScreenPoint End, AnnotationStyle Style) : Annotation
 {
     public override ScreenRect GetBounds() => StrokeGeometry.Inflate(ScreenRect.FromPoints(Start, End), Style.StrokeWidth);
+
+    public override Annotation Translate(int dx, int dy) => this with
+    {
+        Start = new ScreenPoint(Start.X + dx, Start.Y + dy),
+        End = new ScreenPoint(End.X + dx, End.Y + dy),
+    };
 }
 
 /// <summary>箭头：从 Start 指向 End，头部是实心三角。</summary>
@@ -51,6 +67,12 @@ public sealed record ArrowAnnotation(ScreenPoint Start, ScreenPoint End, Annotat
         var pad = (int)Math.Ceiling(Style.StrokeWidth / 2) + (int)Math.Ceiling(headLength * 0.5) + 1;
         return ScreenRect.FromPoints(Start, End).Inflate(pad, pad);
     }
+
+    public override Annotation Translate(int dx, int dy) => this with
+    {
+        Start = new ScreenPoint(Start.X + dx, Start.Y + dy),
+        End = new ScreenPoint(End.X + dx, End.Y + dy),
+    };
 }
 
 /// <summary>自由绘制（画笔 / 荧光笔）。点集是物理像素采样点。</summary>
@@ -78,6 +100,11 @@ public sealed record StrokeAnnotation(IReadOnlyList<ScreenPoint> Points, Annotat
 
         return StrokeGeometry.Inflate(ScreenRect.FromLtrb(minX, minY, maxX, maxY), Style.StrokeWidth);
     }
+
+    public override Annotation Translate(int dx, int dy) => this with
+    {
+        Points = [.. Points.Select(p => new ScreenPoint(p.X + dx, p.Y + dy))],
+    };
 }
 
 /// <summary>
@@ -96,6 +123,12 @@ public sealed record TextAnnotation(
     ScreenRect Bounds) : Annotation
 {
     public override ScreenRect GetBounds() => Bounds;
+
+    public override Annotation Translate(int dx, int dy) => this with
+    {
+        Position = new ScreenPoint(Position.X + dx, Position.Y + dy),
+        Bounds = Bounds.Offset(dx, dy),
+    };
 }
 
 /// <summary>
@@ -123,6 +156,11 @@ public sealed record BadgeAnnotation(ScreenPoint Center, int Number, ArgbColor C
             (radius + pad) * 2,
             (radius + pad) * 2);
     }
+
+    public override Annotation Translate(int dx, int dy) => this with
+    {
+        Center = new ScreenPoint(Center.X + dx, Center.Y + dy),
+    };
 }
 
 /// <summary>
@@ -137,6 +175,8 @@ public sealed record BadgeAnnotation(ScreenPoint Center, int Number, ArgbColor C
 public sealed record MosaicAnnotation(ScreenRect Bounds, int BlockSize) : Annotation
 {
     public override ScreenRect GetBounds() => Bounds;
+
+    public override Annotation Translate(int dx, int dy) => this with { Bounds = Bounds.Offset(dx, dy) };
 }
 
 internal static class StrokeGeometry
@@ -152,6 +192,9 @@ internal static class StrokeGeometry
 /// <summary>可用的标注工具。</summary>
 public enum AnnotationTool
 {
+    /// <summary>选择/移动/删除已有标注（不新增）。</summary>
+    Select,
+
     Arrow,
     Rectangle,
     Ellipse,

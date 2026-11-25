@@ -307,6 +307,12 @@ internal sealed class OverlayWindow : Window
                 e.Handled = true;
                 break;
 
+            case Key.Delete:
+                // 选择工具下删掉高亮的标注；其他工具按 Delete 不做事（误按不破坏画面）。
+                _session.DeleteSelectedAnnotation();
+                e.Handled = true;
+                break;
+
             case Key.Escape:
                 _session.Cancel();
                 e.Handled = true;
@@ -324,7 +330,13 @@ internal sealed class OverlayWindow : Window
                 var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
                 var dx = e.Key == Key.Left ? -step : e.Key == Key.Right ? step : 0;
                 var dy = e.Key == Key.Up ? -step : e.Key == Key.Down ? step : 0;
-                _session.NudgeSelection(dx, dy);
+
+                // 有选中的标注就微调标注，否则微调选区。
+                if (!_session.NudgeSelectedAnnotation(dx, dy))
+                {
+                    _session.NudgeSelection(dx, dy);
+                }
+
                 e.Handled = true;
                 break;
         }
@@ -335,6 +347,7 @@ internal sealed class OverlayWindow : Window
     {
         var tool = key switch
         {
+            Key.V or Key.D0 or Key.NumPad0 => AnnotationTool.Select,
             Key.A or Key.D1 or Key.NumPad1 => AnnotationTool.Arrow,
             Key.R or Key.D2 or Key.NumPad2 => AnnotationTool.Rectangle,
             Key.E or Key.D3 or Key.NumPad3 => AnnotationTool.Ellipse,
