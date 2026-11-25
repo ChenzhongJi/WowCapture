@@ -1,5 +1,7 @@
 # WowCapture
 
+[![build](https://github.com/ChenzhongJi/WowCapture/actions/workflows/build.yml/badge.svg)](https://github.com/ChenzhongJi/WowCapture/actions/workflows/build.yml)
+
 > 按一下热键，0.2 秒出图；截完就能改、就能贴、就能发。
 
 一个给自己用的 Windows 截图工具，同时也希望它对别人有用。
