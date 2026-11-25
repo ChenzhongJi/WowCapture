@@ -189,7 +189,7 @@ docs/
 ## 参与
 
 MVP（M0–M3）已完成，V1.0（截图历史、深色主题、安装包与首发）进行中。
-想练手可以从 [docs/mvp-tasks.md](docs/mvp-tasks.md) 的 good first issue 清单挑：应用图标、深色主题配色、英文翻译、README 演示 GIF。
+想练手可以从 [docs/mvp-tasks.md](docs/mvp-tasks.md) 的 good first issue 清单挑：图标手绘美化（现有的几何款由 [scripts/generate-icon.ps1](scripts/generate-icon.ps1) 程序生成）、深色主题配色、英文翻译、README 演示 GIF。
 
 ## 许可
 

@@ -7,6 +7,7 @@
     <!-- 托盘用 NotifyIcon，直接借 WinForms 的实现，避免为一行托盘代码引 NuGet -->
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>WowCapture</AssemblyName>
     <RootNamespace>WowCapture.App</RootNamespace>
 
@@ -17,6 +18,11 @@
     -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 作为 WPF Resource 供窗口图标加载；exe 图标由 ApplicationIcon 另走原生通道。 -->
+    <Resource Include="app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <!--

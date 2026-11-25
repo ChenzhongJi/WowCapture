@@ -78,7 +78,7 @@ internal sealed class TrayIcon : IDisposable
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = LoadApplicationIcon(),
             Text = $"WowCapture {AppInfo.Version}",
             Visible = true,
             ContextMenuStrip = menu,
@@ -98,6 +98,19 @@ internal sealed class TrayIcon : IDisposable
             tipTitle: title,
             tipText: text,
             tipIcon: warning ? ToolTipIcon.Warning : ToolTipIcon.Info);
+
+    /// <summary>托盘图标取 exe 里嵌的应用图标；受限环境取不到就退回系统默认。</summary>
+    private static Icon LoadApplicationIcon()
+    {
+        try
+        {
+            return Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? SystemIcons.Application;
+        }
+        catch (Exception)
+        {
+            return SystemIcons.Application;
+        }
+    }
 
     private void ShowAbout()
     {

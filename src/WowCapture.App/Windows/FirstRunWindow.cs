@@ -10,6 +10,7 @@ internal sealed class FirstRunWindow : Window
     public FirstRunWindow(string hotkey)
     {
         Title = "WowCapture 已就绪";
+        Icon = WindowIcons.TryLoadAppIcon();
         Width = 480;
         Height = 360;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;

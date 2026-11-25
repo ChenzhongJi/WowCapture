@@ -44,6 +44,7 @@ internal sealed class SettingsWindow : Window
         _applied = applied;
 
         Title = "WowCapture 设置";
+        Icon = WindowIcons.TryLoadAppIcon();
         Width = 480;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
